@@ -8,12 +8,13 @@
 //
 
 #import <Foundation/Foundation.h>
+@import CoreText;
 
 
 #import <Cordova/CDVPlugin.h>
 
 
-@interface PrintPlugin : CDVPlugin {
+@interface PrintPlugin : CDVPlugin <UIPrintInteractionControllerDelegate>{
 	NSString* successCallback;
 	NSString* failCallback;
 	NSString* printHTML;
@@ -21,11 +22,13 @@
     //Options
 	NSInteger dialogLeftPos;
 	NSInteger dialogTopPos;
+
+    UISimpleTextPrintFormatter *_textFormatter;
 }
 
 @property (nonatomic, copy) NSString* successCallback;
 @property (nonatomic, copy) NSString* failCallback;
-@property (nonatomic, copy) NSString* printHTML;
+@property (nonatomic, copy) NSString* printText;
 
 //Print Settings
 @property NSInteger dialogLeftPos;

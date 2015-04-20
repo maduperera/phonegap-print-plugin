@@ -9,15 +9,22 @@
 
 #import "PrintPlugin.h"
 
+
+#define DefaultFontSize 10
+#define PaddingFactor 0.1f
+
 @interface PrintPlugin (Private)
+
+
 -(void) doPrint;
 -(void) callbackWithFuntion:(NSString *)function withData:(NSString *)value;
-- (BOOL) isPrintServiceAvailable;
+-(BOOL) isPrintServiceAvailable;
+-(CGFloat)getHeightForAttributedString:(NSAttributedString *)attributedString;
 @end
 
 @implementation PrintPlugin
 
-@synthesize successCallback, failCallback, printHTML, dialogTopPos, dialogLeftPos;
+@synthesize successCallback, failCallback, printText, dialogTopPos, dialogLeftPos;
 
 /*
  Is printing available. Callback returns true/false if printing is available/unavailable.
@@ -38,7 +45,7 @@
     if (argc < 1) {
         return;
     }
-    self.printHTML = [command.arguments objectAtIndex:0];
+    self.printText = [command.arguments objectAtIndex:0];
     
     if (![self isPrintServiceAvailable]){
         [self callbackWithFuntion:self.failCallback withData: @"{success: false, available: false}"];
@@ -51,6 +58,15 @@
     if (!controller){
         return;
     }
+    
+  
+    /* 
+       Set this object as delegate so you can use
+       the printInteractionController:cutLengthForPaper: delegate
+       to cut the paper @ required height
+    */
+    controller.delegate = self;
+    
     
     if ([UIPrintInteractionController isPrintingAvailable]){
         //Set the priner settings
@@ -69,23 +85,22 @@
         
         //Load page into a webview and use its formatter to print the page
         UIWebView *webViewPrint = [[UIWebView alloc] init];
-        [webViewPrint loadHTMLString:printHTML baseURL:baseURL];
+        [webViewPrint loadHTMLString:self.printText baseURL:baseURL];
         
-        //Get formatter for web (note: margin not required - done in web page)
-        UIViewPrintFormatter *viewFormatter = [webViewPrint viewPrintFormatter];
-        if(argc >= 3) {
-            viewFormatter.maximumContentWidth = [[command.arguments objectAtIndex:2] intValue];
-        }
-        if(argc >= 4) {
-            viewFormatter.maximumContentHeight = [[command.arguments objectAtIndex:3] intValue];
-        }
-        NSError *error = nil;
-        controller.printFormatter = [[UIMarkupTextPrintFormatter alloc] initWithMarkupText:self.printHTML];
-        if (error) {
-            NSLog(@"Error while creating the print formatter:\n%@", error);
-            NSLog(@"%@", dbFilePath);
-        }
-        controller.showsPageRange = YES;
+    
+        // For label printer continuous roll mode, range is neglected
+        controller.showsPageRange = NO;
+        
+        
+        /* Create the UISimpleTextPrintFormatter with the text supplied by the user in the text field */
+        _textFormatter = [[UISimpleTextPrintFormatter alloc] initWithText:self.printText];
+        
+        /* Set the text formatter's color and font properties based on what the user chose */
+        _textFormatter.color = [UIColor blackColor];
+        _textFormatter.font = [UIFont fontWithName:@"ArialMT" size:DefaultFontSize];
+        
+        /* Set this UISimpleTextPrintFormatter on the controller */
+        controller.printFormatter = _textFormatter;
         
         
         void (^completionHandler)(UIPrintInteractionController *, BOOL, NSError *) =
@@ -104,7 +119,10 @@
          If iPad, and if button offsets passed, then show dilalog 
          from offset
          */
-
+         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad &&
+            dialogTopPos != 0 && dialogLeftPos != 0) {
+            [controller presentFromRect:CGRectMake(self.dialogLeftPos, self.dialogTopPos, 0, 0) inView:self.webView animated:YES completionHandler:completionHandler];
+    } else {
         if ([UIDevice currentDevice].userInterfaceIdiom  == UIUserInterfaceIdiomPad) {
         
             CGRect bounds = self.webView.bounds;         
@@ -119,7 +137,8 @@
              }];
         
         } else {
-        [controller presentAnimated:YES completionHandler:completionHandler];
+            [controller presentAnimated:YES completionHandler:completionHandler];
+        }
     }
 }
 
@@ -136,5 +155,40 @@
     
     return NO;
 }
+
+/* calculate the height of an attributed string */
+-(CGFloat)getHeightForAttributedString:(NSAttributedString *)attributedString{
+    CTTypesetterRef typesetter = CTTypesetterCreateWithAttributedString((CFAttributedStringRef)attributedString);
+    CGFloat width = 600;
+    
+    CFIndex offset = 0, length;
+    CGFloat y = 0;
+    do {
+        length = CTTypesetterSuggestLineBreak(typesetter, offset, width);
+        CTLineRef line = CTTypesetterCreateLine(typesetter, CFRangeMake(offset, length));
+        
+        CGFloat ascent, descent, leading;
+        CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+        
+        CFRelease(line);
+        
+        offset += length;
+        y += ascent + descent + leading;
+    } while (offset < [attributedString length]);
+    
+    CFRelease(typesetter);
+    
+    return ceil(y);
+}
+
+/* cut the paper @ the end of content */
+- (CGFloat)printInteractionController:(UIPrintInteractionController *)printInteractionController cutLengthForPaper:(UIPrintPaper *)paper {
+    
+    NSAttributedString *attributedString = [[NSAttributedString alloc] initWithString:self.printText];
+    return [self getHeightForAttributedString:attributedString];
+    
+}
+
+
 
 @end
