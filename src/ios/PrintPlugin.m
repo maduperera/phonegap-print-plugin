@@ -189,6 +189,16 @@
     
 }
 
+- (void)printInteractionControllerWillStartJob:(UIPrintInteractionController *)printInteractionController{
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Air Print"
+                                                    message:@"Run Ticket is printing!"
+                                                   delegate:nil
+                                          cancelButtonTitle:@"OK"
+                                          otherButtonTitles:nil];
+    
+    [alert show];
+}
+
 
 
 @end
