@@ -29,12 +29,12 @@
 /*
  Is printing available. Callback returns true/false if printing is available/unavailable.
  */
- - (void) isPrintingAvailable:(CDVInvokedUrlCommand*)command{
+- (void) isPrintingAvailable:(CDVInvokedUrlCommand*)command{
     NSUInteger argc = [command.arguments count];
     
-//    if (argc < 0) {
-//        return;
-//    }
+    //    if (argc < 0) {
+    //        return;
+    //    }
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:([self isPrintServiceAvailable] ? YES : NO)];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
@@ -59,13 +59,14 @@
         return;
     }
     
-  
-    /* 
-       Set this object as delegate so you can use
-       the printInteractionController:cutLengthForPaper: delegate
-       to cut the paper @ required height
-    */
+    
+    /*
+     Set this object as delegate so you can use
+     the printInteractionController:cutLengthForPaper: delegate
+     to cut the paper @ required height
+     */
     controller.delegate = self;
+    
     
     
     if ([UIPrintInteractionController isPrintingAvailable]){
@@ -76,7 +77,7 @@
             printInfo.orientation = UIPrintInfoOrientationLandscape;
         }
         controller.printInfo = printInfo;
-        controller.showsPageRange = YES;
+        
         
         
         //Set the base URL to be the www directory.
@@ -87,7 +88,7 @@
         UIWebView *webViewPrint = [[UIWebView alloc] init];
         [webViewPrint loadHTMLString:self.printText baseURL:baseURL];
         
-    
+        
         // For label printer continuous roll mode, range is neglected
         controller.showsPageRange = NO;
         
@@ -98,6 +99,7 @@
         /* Set the text formatter's color and font properties based on what the user chose */
         _textFormatter.color = [UIColor blackColor];
         _textFormatter.font = [UIFont fontWithName:@"ArialMT" size:DefaultFontSize];
+        
         
         /* Set this UISimpleTextPrintFormatter on the controller */
         controller.printFormatter = _textFormatter;
@@ -111,37 +113,49 @@
             }
             else{
                 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"{success: true}"];
+                
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Air Print"
+                                                                message:@"Run Ticket is printing!"
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+                
+                [alert show];
+                
             }
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            
+            
         };
         
         /*
-         If iPad, and if button offsets passed, then show dilalog 
+         If iPad, and if button offsets passed, then show dilalog
          from offset
          */
-         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad &&
+        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad &&
             dialogTopPos != 0 && dialogLeftPos != 0) {
             [controller presentFromRect:CGRectMake(self.dialogLeftPos, self.dialogTopPos, 0, 0) inView:self.webView animated:YES completionHandler:completionHandler];
-    } else {
-        if ([UIDevice currentDevice].userInterfaceIdiom  == UIUserInterfaceIdiomPad) {
-        
-            CGRect bounds = self.webView.bounds;         
-            self.dialogLeftPos = (bounds.size.width / 2) ;
-            self.self.dialogTopPos = (bounds.size.height/2);
-            
-            [controller presentFromRect:CGRectMake(self.dialogLeftPos,self.dialogTopPos, 0, 0) inView:self.webView animated:YES completionHandler:
-             ^(UIPrintInteractionController *ctrl, BOOL ok, NSError *e) {
-                 CDVPluginResult* pluginResult =
-                 [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-                 
-             }];
-        
         } else {
-            [controller presentAnimated:YES completionHandler:completionHandler];
+            if ([UIDevice currentDevice].userInterfaceIdiom  == UIUserInterfaceIdiomPad) {
+                
+                CGRect bounds = self.webView.bounds;
+                self.dialogLeftPos = (bounds.size.width / 2) ;
+                self.self.dialogTopPos = (bounds.size.height/2);
+                
+                [controller presentFromRect:CGRectMake(self.dialogLeftPos,self.dialogTopPos, 0, 0) inView:self.webView animated:YES completionHandler:
+                 ^(UIPrintInteractionController *ctrl, BOOL ok, NSError *e) {
+                     CDVPluginResult* pluginResult =
+                     [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+                     
+                 }];
+                
+            } else {
+                [controller presentAnimated:YES completionHandler:completionHandler];
+            }
         }
+        
     }
-}
-
+    
 }
 
 -(BOOL) isPrintServiceAvailable{
@@ -186,17 +200,16 @@
     
     NSAttributedString *attributedString = [[NSAttributedString alloc] initWithString:self.printText];
     return [self getHeightForAttributedString:attributedString];
-    
 }
 
 - (void)printInteractionControllerWillStartJob:(UIPrintInteractionController *)printInteractionController{
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Air Print"
-                                                    message:@"Run Ticket is printing!"
-                                                   delegate:nil
-                                          cancelButtonTitle:@"OK"
-                                          otherButtonTitles:nil];
-    
-    [alert show];
+}
+
+- (void)printInteractionControllerDidDismissPrinterOptions:(UIPrintInteractionController *)printInteractionController{
+}
+
+// ensures the page is genareated just before printing
+-(void)printInteractionControllerDidFinishJob:(UIPrintInteractionController *)printInteractionController{
 }
 
 
