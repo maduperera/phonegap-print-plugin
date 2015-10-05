@@ -78,21 +78,6 @@
         }
         controller.printInfo = printInfo;
         
-        
-        
-        //Set the base URL to be the www directory.
-        NSString *dbFilePath = [[NSBundle mainBundle] pathForResource:@"www" ofType:nil ];
-        NSURL *baseURL = [NSURL fileURLWithPath:dbFilePath];
-        
-        //Load page into a webview and use its formatter to print the page
-        UIWebView *webViewPrint = [[UIWebView alloc] init];
-        [webViewPrint loadHTMLString:self.printText baseURL:baseURL];
-        
-        
-        // For label printer continuous roll mode, range is neglected
-        controller.showsPageRange = NO;
-        
-        
         /* Create the UISimpleTextPrintFormatter with the text supplied by the user in the text field */
         _textFormatter = [[UISimpleTextPrintFormatter alloc] initWithText:self.printText];
         
@@ -103,6 +88,8 @@
         
         /* Set this UISimpleTextPrintFormatter on the controller */
         controller.printFormatter = _textFormatter;
+        
+        controller.showsPageRange = NO;
         
         
         void (^completionHandler)(UIPrintInteractionController *, BOOL, NSError *) =
@@ -199,7 +186,16 @@
 - (CGFloat)printInteractionController:(UIPrintInteractionController *)printInteractionController cutLengthForPaper:(UIPrintPaper *)paper {
     
     NSAttributedString *attributedString = [[NSAttributedString alloc] initWithString:self.printText];
-    return [self getHeightForAttributedString:attributedString];
+    CGFloat printableWidth = paper.printableRect.size.width;
+    
+    CGRect attributedStringBoundingRect = [attributedString boundingRectWithSize:CGSizeMake(printableWidth, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin context:nil];
+    
+    //offset value came from heaven
+    CGFloat offset = 120;
+    CGFloat cutLength = attributedStringBoundingRect.size.height - offset;
+    NSLog(@"%f",attributedStringBoundingRect.size.height) ;
+    return cutLength;
+    
 }
 
 - (void)printInteractionControllerWillStartJob:(UIPrintInteractionController *)printInteractionController{
